@@ -1,5 +1,6 @@
 from lexer import TOKENS
 from queue import Queue, LifoQueue
+from sem import check_data_type
 import logging
 
 sym_table = {}
@@ -80,9 +81,11 @@ class SyntaxAnalyzer:
                 param_name_stack.put_nowait(token_name)
 
             elif token_name == 'PARAM_DTYPE':
+                prev_token_val = self.token_list[index - 1][1]
                 if param_name_stack.qsize() > 0:
                     tok = param_name_stack.get()
                     if tok == 'OBJECT_NAME':
+                        sym_table[prev_token_val] = token_value
                         index += 1
                         continue
                     while not param_name_stack.empty():
@@ -126,7 +129,7 @@ class SyntaxAnalyzer:
             elif token_name == 'COMMA':
                 prev_token_name = self.token_list[index - 1][0]
                 prev_token_val = self.token_list[index - 1][1]
-                if prev_token_name not in ['OBJECT_NAME', 'PARAM_DTYPE', 'SINGLE_QUOTE', 'NUMBER', 'ALL']:
+                if prev_token_name not in ['OBJECT_NAME', 'PARAM_DTYPE', 'SINGLE_QUOTE', 'NUMBER', 'ALL', 'NULL']:
                     logging.error(SQLSyntaxError('Invalid token near %s' % token_value,
                                                  self.sql_file.locate(prev_token_val),
                                                  len(prev_token_name)))
@@ -159,7 +162,7 @@ class SyntaxAnalyzer:
                                                  0))
 
                 if next_token_name not in ['OBJECT_NAME']:
-                    print(next_token_name)
+
                     logging.error(SQLSyntaxError('Missing column name near %s' % token_value,
                                                  self.sql_file.locate(token_value),
                                                  0))
@@ -178,17 +181,33 @@ class SyntaxAnalyzer:
                                                  0))
             elif token_name == 'OPERATOR':
                 prev_token_name = self.token_list[index - 1][0]
+                prev_token_val = self.token_list[index - 1][1]
                 next_token_name = self.token_list[index + 1][0]
+                next_token_val = self.token_list[index + 1][1]
+                future_token_name = self.token_list[index + 2][0]
 
-                if prev_token_name not in ['OBJECT_NAME']:
+                if prev_token_name not in ['OBJECT_NAME'] and prev_token_name != 'PARAM_DTYPE':
                     logging.error(SQLSyntaxError('Missing column name near %s' % token_value,
                                                  self.sql_file.locate(token_value),
                                                  0))
 
-                if next_token_name not in ['SINGLE_QUOTE', 'NUMBER', 'OBJECT_NAME', 'L_PAREN']:
+                if next_token_name not in ['SINGLE_QUOTE', 'NUMBER', 'OBJECT_NAME', 'L_PAREN', 'NULL']:
                     logging.error(SQLSyntaxError('Wrong right side of operator %s' % token_value,
                                                  self.sql_file.locate(token_value),
                                                  0))
+                if next_token_name == 'L_PAREN' and future_token_name == 'R_PAREN':
+                    logging.error(SQLSyntaxError('Wrong right side of operator %s' % token_value,
+                                                 self.sql_file.locate(prev_token_val),
+                                                 0))
+
+                if prev_token_name in ['PARAM_DTYPE']:
+
+                    v_dtype = check_data_type(prev_token_val, next_token_val)
+
+                    if not v_dtype:
+                        logging.error(SQLSyntaxError('Type mismatch',
+                                                     self.sql_file.locate(prev_token_val),
+                                                     0))
 
             elif token_name == 'ALIAS':
                 next_token_name = self.token_list[index + 1][0]
@@ -221,10 +240,12 @@ class SyntaxAnalyzer:
                                                      0))
 
             elif token_name == 'SINGLE_QUOTE':
+
                 if not single_quotes.empty():
                     past_token_name = self.token_list[index - 2][0]
+                    prev_token_name = self.token_list[index - 1][0]
 
-                    if past_token_name == 'SINGLE_QUOTE':
+                    if past_token_name == 'SINGLE_QUOTE' or prev_token_name == 'SINGLE_QUOTE':
                         single_quotes.get()
                 else:
                     prev_token_val = self.token_list[index - 1][1]

@@ -1,6 +1,6 @@
 from lexer import lg
 from sql import SqlFileReader
-from parser import SyntaxAnalyzer
+from parsing import SyntaxAnalyzer
 
 sql_file = SqlFileReader('sql.sql')
 
@@ -14,3 +14,5 @@ synax = SyntaxAnalyzer(sql_file, identified_tokens)
 synax.start_analysis()
 
 
+if __name__ == '__main__':
+    pass

@@ -1,7 +1,5 @@
 from rply import LexerGenerator
 
-
-
 TOKENS = {
     'CREATE': r'create',
     'PROCEDURE': r'procedure',
@@ -27,7 +25,7 @@ TOKENS = {
     'SET': r'(set)+',
     'OPERATOR': r'(\=|\<\=|\>\=|\>|\<|\<\>|\!\=)+',
     'ARITHMETICAL': r'(\+|\-|\/)+',
-    'SINGLE_QUOTE': '\'+',
+    'SINGLE_QUOTE': '\'',
     'LT': '<+',
     'NUMBER': r'\d+',
     'ALIAS': r'(as)+',
